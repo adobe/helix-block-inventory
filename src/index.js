@@ -13,6 +13,8 @@ import wrap from '@adobe/helix-shared-wrap';
 import { logger } from '@adobe/helix-universal-logger';
 import { wrap as status } from '@adobe/helix-status';
 import { Response } from '@adobe/helix-fetch';
+import getPreview from './preview.js';
+import BlockList from './blocklist.js';
 
 /**
  * This is the main function
@@ -20,12 +22,35 @@ import { Response } from '@adobe/helix-fetch';
  * @param {UniversalContext} context the context of the universal serverless function
  * @returns {Response} a response
  */
-function run(request, context) {
-  const name = new URL(request.url).searchParams.get('name') || 'world';
-  context.log.info(`Saying hello to: ${name}.`);
-  return new Response(`Hello, ${name}.`);
+async function run(request, context) {
+  const url = new URL(request.url);
+  const inventory = url.searchParams.get('inventory');
+  const selector = url.searchParams.get('selector');
+  // const filter = url.searchParams.get('filter');
+  if (inventory && selector) {
+    const { shot_url: location } = await getPreview(
+      inventory,
+      selector,
+      { apikey: context.env.SCREENLY_KEY },
+    );
+    return new Response('Your screenshot is ready', {
+      status: 302,
+      headers: {
+        location,
+      },
+    });
+  } else if (inventory) {
+    const { blocks } = await (await new BlockList(inventory).fetch()).parse();
+    return new Response(JSON.stringify(blocks), {
+      headers: {
+        'content-type': 'application/json',
+      },
+    });
+  }
+  return new Response('Missing parameters inventory, [selector]', { status: 400 });
 }
 
+// eslint-disable-next-line import/prefer-default-export
 export const main = wrap(run)
   .with(status)
   .with(logger.trace)

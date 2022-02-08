@@ -10,14 +10,11 @@
  * governing permissions and limitations under the License.
  */
 
-/* eslint-env mocha */
-import assert from 'assert';
-import { Request } from '@adobe/helix-fetch';
-import { main } from '../src/index.js';
-
-describe('Index Tests', () => {
-  it('index function is present', async () => {
-    const result = await main(new Request('https://localhost/'), {});
-    assert.strictEqual(await result.text(), 'Missing parameters inventory, [selector]');
-  });
-});
+module.exports = {
+  parserOptions: {
+    sourceType: 'module',
+    ecmaVersion: 11,
+  },
+  root: true,
+  extends: '@adobe/helix',
+};
