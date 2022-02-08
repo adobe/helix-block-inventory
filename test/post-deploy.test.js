@@ -20,13 +20,12 @@ const { expect } = chai;
 
 createTargets().forEach((target) => {
   describe(`Post-Deploy Tests (${target.title()})`, () => {
-    it('Purge a blog post', async () => {
+    it('Get 400 for empty prameters', async () => {
       await chai
         .request(target.host())
         .get(target.urlPath())
         .then((response) => {
-          expect(response).to.have.status(200);
-          expect.fail('Not ready yet');
+          expect(response).to.have.status(400);
         }).catch((e) => {
           throw e;
         });
