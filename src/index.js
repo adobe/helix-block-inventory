@@ -40,7 +40,7 @@ async function run(request, context) {
       },
     });
   } else if (inventory) {
-    const { blocks } = await (await new BlockList(inventory).fetch()).parse();
+    const { blocks } = await (await new BlockList(inventory, request.url).fetch()).parse();
     return new Response(JSON.stringify(blocks), {
       headers: {
         'content-type': 'application/json',
