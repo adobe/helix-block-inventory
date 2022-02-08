@@ -11,6 +11,7 @@
  */
 /* eslint-env mocha */
 import assert from 'assert';
+import { reset } from '@adobe/helix-fetch';
 import getPreview from '../src/preview.js';
 
 describe('Preview Tests (online)', () => {
@@ -23,4 +24,6 @@ describe('Preview Tests (online)', () => {
     assert.ok(res);
     assert.ok(res.shot_url);
   }).timeout(15000);
+
+  after(() => reset);
 });

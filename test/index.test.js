@@ -12,7 +12,7 @@
 
 /* eslint-env mocha */
 import assert from 'assert';
-import { Request } from '@adobe/helix-fetch';
+import { Request, reset } from '@adobe/helix-fetch';
 import { main } from '../src/index.js';
 
 describe('Index Tests', () => {
@@ -20,4 +20,6 @@ describe('Index Tests', () => {
     const result = await main(new Request('https://localhost/'), {});
     assert.strictEqual(await result.text(), 'Missing parameters inventory, [selector]');
   });
+
+  after(() => reset);
 });

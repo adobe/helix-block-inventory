@@ -38,7 +38,7 @@ export default class BlockList {
       this.body = await res.text();
       return this;
     }
-    throw new Error(`unable to fetch inventory from ${this.base}`);
+    throw new Error(`unable to fetch inventory from ${this.base}: ${await res.text()}`);
   }
 
   parse() {

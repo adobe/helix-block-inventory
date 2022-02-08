@@ -11,6 +11,7 @@
  */
 /* eslint-env mocha */
 import assert from 'assert';
+import { reset } from '@adobe/helix-fetch';
 import BlockList from '../src/blocklist.js';
 
 describe('Blocklist Tests (online)', () => {
@@ -25,4 +26,6 @@ describe('Blocklist Tests (online)', () => {
       description: '',
     });
   }).timeout(30000);
+
+  after(() => reset);
 });
