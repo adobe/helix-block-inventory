@@ -26,10 +26,11 @@ function getPreviousHeading(el, className = el.className, otherchildren = []) {
 }
 
 export default class BlockList {
-  constructor(base) {
+  constructor(base, serviceurl) {
     this.original = new URL(base);
     this.base = new URL(base);
     this.base.pathname = `${this.base.pathname}.plain.html`;
+    this.serviceurl = serviceurl;
   }
 
   async fetch() {
@@ -50,6 +51,12 @@ export default class BlockList {
     return Array.from(this.dom.querySelectorAll('div[class]')).map((e) => ({
       name: e.className,
       example: e.outerHTML,
+      preview: (() => {
+        const u = new URL(this.serviceurl);
+        u.searchParams.set('selector', getPreviousHeading(e).selector);
+        u.searchParams.set('inventory', this.original);
+        return u.href;
+      })(),
       title: getPreviousHeading(e).heading,
       selector: getPreviousHeading(e).selector,
       description: getPreviousHeading(e).otherchildren
