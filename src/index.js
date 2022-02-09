@@ -57,6 +57,7 @@ async function run(request, context) {
         status: 302,
         headers: {
           location,
+          'cache-control': 'max-age: 3500', // screenly stores images for 60 minutes.
         },
       });
     }
