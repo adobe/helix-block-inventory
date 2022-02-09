@@ -35,7 +35,7 @@ createTargets().forEach((target) => {
     it('Get 200 for valid inventory', async () => {
       await chai
         .request(target.host())
-        .get(`${target.urlPath()}??inventory=https://main--express-website--adobe.hlx.live/documentation/block-inventory`)
+        .get(`${target.urlPath()}?inventory=https://main--express-website--adobe.hlx.live/documentation/block-inventory`)
         .then((response) => {
           expect(response).to.have.status(200);
           expect(response).to.be.json;

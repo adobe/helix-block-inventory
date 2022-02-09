@@ -42,11 +42,11 @@ async function run(request, context) {
         },
       });
     }
-    context.log.error(error);
-    return new Response(JSON.stringify(message), {
-      status: 500,
+    context.log.error(message.message);
+    return new Response(message.message, {
+      status: error,
       headers: {
-        'x-error': error,
+        'x-error': message.message,
       },
     });
   } else if (inventory) {
