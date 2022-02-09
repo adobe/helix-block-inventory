@@ -96,6 +96,7 @@ async function run(request, context) {
     return new Response(JSON.stringify(allblocks), {
       headers: {
         'content-type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
       },
     });
   }
