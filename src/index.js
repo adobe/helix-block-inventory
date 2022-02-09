@@ -28,15 +28,25 @@ async function run(request, context) {
   const selector = url.searchParams.get('selector');
   // const filter = url.searchParams.get('filter');
   if (inventory && selector) {
-    const { shot_url: location } = await getPreview(
+    context.log.info(`Getting screenshot ${context.env.SCREENLY_KEY?.length}`);
+    const { shot_url: location, error, message } = await getPreview(
       inventory,
       selector,
       { apikey: context.env.SCREENLY_KEY },
     );
-    return new Response('Your screenshot is ready', {
-      status: 302,
+    if (location) {
+      return new Response('Your screenshot is ready', {
+        status: 302,
+        headers: {
+          location,
+        },
+      });
+    }
+    context.log.error(error);
+    return new Response(JSON.stringify(message), {
+      status: 500,
       headers: {
-        location,
+        'x-error': error,
       },
     });
   } else if (inventory) {
