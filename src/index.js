@@ -26,6 +26,14 @@ async function run(request, context) {
   const url = new URL(request.url);
   const inventory = url.searchParams.get('inventory');
   const selector = url.searchParams.get('selector');
+  if (inventory && new URL(inventory).host.match(/\.hlx\.live%/)) {
+    return new Error('Invalid URL, only *.hlx.live allowed', {
+      statusCode: 400,
+      headers: {
+        'x-error': 'Unsupported host name',
+      },
+    });
+  }
   // const filter = url.searchParams.get('filter');
   if (inventory && selector) {
     context.log.info(`Getting screenshot ${context.env.SCREENLY_KEY?.length}`);
