@@ -16,9 +16,22 @@ import { Request, reset } from '@adobe/helix-fetch';
 import { main } from '../src/index.js';
 
 describe('Index Tests', () => {
+  const context = {
+    func: {
+      package: 'helix-shared',
+      name: 'block-inventory',
+      version: 'local',
+    },
+  };
+
   it('index function is present', async () => {
-    const result = await main(new Request('https://localhost/'), {});
+    const result = await main(new Request('https://localhost/'), context);
     assert.strictEqual(await result.text(), 'Missing parameters inventory, [selector]');
+  });
+
+  it('index function generates list', async () => {
+    const result = await main(new Request('https://localhost/?inventory=https%3A%2F%2Fmain--express-website--adobe.hlx.live%2Fdocumentation%2Fblock-inventory&inventory=https%3A%2F%2Fmain--express-website--adobe.hlx.live%2Fdocumentation%2Fblock-inventory'), context);
+    assert.equal(result.status, 200);
   });
 
   after(() => reset);

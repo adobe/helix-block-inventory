@@ -50,6 +50,7 @@ export default class BlockList {
   get blocks() {
     return Array.from(this.dom.querySelectorAll('div[class]')).map((e) => ({
       name: e.className,
+      variant: e.className.split('--').slice(1).map((v) => v.replace(/-$/, '')).join(', '),
       example: e.outerHTML,
       preview: (() => {
         const u = new URL(this.serviceurl);

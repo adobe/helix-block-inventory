@@ -23,19 +23,21 @@ import BlockList from './blocklist.js';
  * @returns {Response} a response
  */
 async function run(request, context) {
+  const serviceurl = new URL(`https://helix-pages.anywhere.run/${context.func.package}/${context.func.name}@${context.func.version}`);
   const url = new URL(request.url);
   const inventory = url.searchParams.get('inventory');
+  const inventories = url.searchParams.getAll('inventory');
   const selector = url.searchParams.get('selector');
-  if (inventory && new URL(inventory).host.match(/\.hlx\.live%/)) {
-    return new Error('Invalid URL, only *.hlx.live allowed', {
-      statusCode: 400,
-      headers: {
-        'x-error': 'Unsupported host name',
-      },
-    });
-  }
-  // const filter = url.searchParams.get('filter');
+
   if (inventory && selector) {
+    if (inventory && new URL(inventory).host.match(/\.hlx\.live%/)) {
+      return new Error('Invalid URL, only *.hlx.live allowed', {
+        statusCode: 400,
+        headers: {
+          'x-error': 'Unsupported host name',
+        },
+      });
+    }
     context.log.info(`Getting screenshot ${context.env.SCREENLY_KEY?.length}`);
     const { shot_url: location, error, message } = await getPreview(
       inventory,
@@ -57,9 +59,29 @@ async function run(request, context) {
         'x-error': message.message,
       },
     });
-  } else if (inventory) {
-    const { blocks } = await (await new BlockList(inventory, request.url).fetch()).parse();
-    return new Response(JSON.stringify(blocks), {
+  } else if (inventories.length) {
+    const allblocks = Object.entries((await Promise.all(inventories.map(async (i) => {
+      const { blocks } = await (await new BlockList(i, serviceurl).fetch()).parse();
+      return blocks;
+    }))).reduce((p, v) => [...p, ...v], []) // flatten
+      .reduce((p, v) => { // group by unique preview url
+        const { name, preview } = v;
+        // strip out variants (typically in brackets)
+        const cleanname = name.replace(/--.*$/, '');
+        if (typeof p[cleanname] === 'undefined') {
+          // eslint-disable-next-line no-param-reassign
+          p[cleanname] = {};
+        }
+        // eslint-disable-next-line no-param-reassign
+        p[cleanname][preview] = v;
+        return p;
+      }, {})).reduce((p, [key, value]) => {
+      // eslint-disable-next-line no-param-reassign
+      p[key] = Object.values(value);
+      return p;
+    }, {});
+
+    return new Response(JSON.stringify(allblocks), {
       headers: {
         'content-type': 'application/json',
       },
