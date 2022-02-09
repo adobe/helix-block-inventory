@@ -29,10 +29,34 @@ describe('Index Tests', () => {
     assert.strictEqual(await result.text(), 'Missing parameters inventory, [selector]');
   });
 
-  it('index function generates list', async () => {
-    const result = await main(new Request('https://localhost/?inventory=https%3A%2F%2Fmain--express-website--adobe.hlx.live%2Fdocumentation%2Fblock-inventory&inventory=https%3A%2F%2Fmain--express-website--adobe.hlx.live%2Fdocumentation%2Fblock-inventory'), context);
+  it('index rejects non-helix URLs', async () => {
+    const result = await main(new Request([
+      'https://localhost/',
+      '?inventory=https://www.example.com',
+      '&selector=body',
+    ].join('')), context);
+    assert.equal(result.status, 400);
+  }).timeout(15000);
+
+  it('index function generates list from multiple inventories', async () => {
+    const result = await main(new Request([
+      'https://localhost/',
+      '?inventory=https%3A%2F%2Fmain--express-website--adobe.hlx.live%2Fdocumentation%2Fblock-inventory',
+      '&inventory=https%3A%2F%2Fmain--express-website--adobe.hlx.live%2Fdocumentation%2Fblock-inventory',
+      '&domain=https://blog.adobe.com',
+    ].join('')), context);
     assert.equal(result.status, 200);
-  });
+    console.log(await result.json());
+  }).timeout(15000);
+
+  it('index function generates list from domain', async () => {
+    const result = await main(new Request([
+      'https://localhost/',
+      '?domain=https://blog.adobe.com',
+    ].join('')), context);
+    assert.equal(result.status, 200);
+    console.log(await result.json());
+  }).timeout(15000);
 
   after(() => reset);
 });

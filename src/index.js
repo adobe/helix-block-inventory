@@ -12,9 +12,10 @@
 import wrap from '@adobe/helix-shared-wrap';
 import { logger } from '@adobe/helix-universal-logger';
 import { wrap as status } from '@adobe/helix-status';
-import { Response } from '@adobe/helix-fetch';
+import { Response, fetch } from '@adobe/helix-fetch';
 import getPreview from './preview.js';
 import BlockList from './blocklist.js';
+import TopList from './toplist.js';
 
 /**
  * This is the main function
@@ -28,15 +29,22 @@ async function run(request, context) {
   const inventory = url.searchParams.get('inventory');
   const inventories = url.searchParams.getAll('inventory');
   const selector = url.searchParams.get('selector');
+  const domain = url.searchParams.get('domain');
 
   if (inventory && selector) {
-    if (inventory && new URL(inventory).host.match(/\.hlx\.live%/)) {
-      return new Error('Invalid URL, only *.hlx.live allowed', {
-        statusCode: 400,
-        headers: {
-          'x-error': 'Unsupported host name',
-        },
-      });
+    if (inventory && !new URL(inventory).host.match(/\.hlx\.live%/)) {
+      // this is not a hlx.live URL, but it could be a valid production URL, checking
+      const guessurl = new URL('https://helix-pages.anywhere.run/helix-services/run-query@v2/guess-hostname');
+      guessurl.searchParams.set('domain', new URL(inventory).hostname);
+      const guessreq = await fetch(guessurl.href);
+      if (!guessreq.ok || (await guessreq.json()).results.length === 0) {
+        return new Response('Invalid URL, only *.hlx.live allowed', {
+          status: 400,
+          headers: {
+            'x-error': 'Unsupported host name',
+          },
+        });
+      }
     }
     context.log.info(`Getting screenshot ${context.env.SCREENLY_KEY?.length}`);
     const { shot_url: location, error, message } = await getPreview(
@@ -59,11 +67,14 @@ async function run(request, context) {
         'x-error': message.message,
       },
     });
-  } else if (inventories.length) {
-    const allblocks = Object.entries((await Promise.all(inventories.map(async (i) => {
-      const { blocks } = await (await new BlockList(i, serviceurl).fetch()).parse();
-      return blocks;
-    }))).reduce((p, v) => [...p, ...v], []) // flatten
+  } else if (inventories.length || domain) {
+    const allblocks = Object.entries(([
+      (domain ? await (await new TopList(domain, serviceurl).fetch()).parse().blocks : []),
+      ...await Promise.all(inventories.map(async (i) => {
+        const { blocks } = await (await new BlockList(i, serviceurl).fetch()).parse();
+        return blocks;
+      }))])
+      .reduce((p, b) => [...p, ...b], []) // flatten
       .reduce((p, v) => { // group by unique preview url
         const { name, preview } = v;
         // strip out variants (typically in brackets)
