@@ -61,7 +61,7 @@ async function run(request, context) {
         },
       });
     }
-    context.log.error(message.message);
+    context.log.error(`Error ${error} from Screenly: ${message.message}`);
     return new Response(message.message, {
       status: error,
       headers: {
