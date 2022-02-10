@@ -25,6 +25,29 @@ function getPreviousHeading(el, className = el.className, otherchildren = []) {
   return { otherchildren };
 }
 
+function getTable(document, blockName, block) {
+  const rows = [...block.children];
+  const maxCols = rows.reduce((cols, row) => (
+    row.children.length > cols ? row.children.length : cols), 0);
+  const table = document.createElement('table');
+  const headerRow = document.createElement('tr');
+  headerRow.innerHTML = `<th colspan="${maxCols}">${blockName}</th>`;
+  table.append(headerRow);
+  rows.forEach((row) => {
+    const tr = document.createElement('tr');
+    [...row.children].forEach((col) => {
+      const td = document.createElement('td');
+      if (row.children.length < maxCols) {
+        td.setAttribute('colspan', maxCols);
+      }
+      td.innerHTML = col.innerHTML;
+      tr.append(td);
+    });
+    table.append(tr);
+  });
+  return table.outerHTML;
+}
+
 export default class BlockList {
   constructor(base, serviceurl) {
     this.original = new URL(base);
@@ -52,6 +75,7 @@ export default class BlockList {
       name: e.className,
       variant: e.className.split('--').slice(1).map((v) => v.replace(/-$/, '')).join(', '),
       example: e.outerHTML,
+      table: getTable(this.dom, e.className, e),
       preview: (() => {
         const u = new URL(this.serviceurl);
         u.searchParams.set('selector', getPreviousHeading(e).selector);

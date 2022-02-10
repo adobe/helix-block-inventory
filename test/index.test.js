@@ -58,5 +58,15 @@ describe('Index Tests', () => {
     console.log(await result.json());
   }).timeout(15000);
 
+  it.skip('index function generates screenshot from URL', async () => {
+    const result = await main(new Request([
+      'https://localhost/',
+      '?selector=%23marquee-small+%7E+*%5Bdata-block-name%3D%22marquee--small-%22%5D',
+      '&inventory=https%3A%2F%2Fmain--consonant--adobecom.hlx.live%2Fdocumentation%2Fblock-inventory',
+    ].join('')), context);
+    assert.equal(result.status, 200);
+    console.log(await result.json());
+  }).timeout(45000);
+
   after(() => reset);
 });
