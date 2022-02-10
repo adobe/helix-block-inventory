@@ -32,7 +32,7 @@ async function run(request, context) {
   const domain = url.searchParams.get('domain');
 
   if (inventory && selector) {
-    if (inventory && !new URL(inventory).host.match(/\.hlx\.live%/)) {
+    if (inventory && !new URL(inventory).host.match(/\.hlx\.live$/)) {
       // this is not a hlx.live URL, but it could be a valid production URL, checking
       const guessurl = new URL('https://helix-pages.anywhere.run/helix-services/run-query@v2/guess-hostname');
       guessurl.searchParams.set('domain', new URL(inventory).hostname);
