@@ -11,41 +11,20 @@
  */
 import { fetch } from '@adobe/helix-fetch';
 import { JSDOM } from 'jsdom';
+import Block from './block.js';
 
 function getPreviousHeading(el, className = el.className, otherchildren = []) {
-  if (el.previousElementSibling && el.previousElementSibling.tagName.match(/^H[1-6]$/)) {
+  const prevEl = el.previousElementSibling;
+  if (prevEl && prevEl.tagName.match(/^H[1-6]$/)) {
     return {
-      heading: el.previousElementSibling.textContent,
+      heading: prevEl.textContent,
       otherchildren,
-      selector: `#${el.previousElementSibling.id} ~ *[data-block-name="${className}"]`,
+      selector: `#${prevEl.id} ~ *[data-block-name="${className}"]`,
     };
-  } else if (el.previousElementSibling) {
-    return getPreviousHeading(el.previousElementSibling, className, [...otherchildren, el]);
+  } else if (prevEl) {
+    return getPreviousHeading(prevEl, className, [...otherchildren, el]);
   }
   return { otherchildren };
-}
-
-function getTable(document, blockName, block) {
-  const rows = [...block.children];
-  const maxCols = rows.reduce((cols, row) => (
-    row.children.length > cols ? row.children.length : cols), 0);
-  const table = document.createElement('table');
-  const headerRow = document.createElement('tr');
-  headerRow.innerHTML = `<th colspan="${maxCols}">${blockName}</th>`;
-  table.append(headerRow);
-  rows.forEach((row) => {
-    const tr = document.createElement('tr');
-    [...row.children].forEach((col) => {
-      const td = document.createElement('td');
-      if (row.children.length < maxCols) {
-        td.setAttribute('colspan', maxCols);
-      }
-      td.innerHTML = col.innerHTML;
-      tr.append(td);
-    });
-    table.append(tr);
-  });
-  return table.outerHTML;
 }
 
 export default class BlockList {
@@ -71,22 +50,26 @@ export default class BlockList {
   }
 
   get blocks() {
-    return Array.from(this.dom.querySelectorAll('div[class]')).map((e) => ({
-      name: e.className,
-      variant: e.className.split('--').slice(1).map((v) => v.replace(/-$/, '')).join(', '),
-      example: e.outerHTML,
-      table: getTable(this.dom, e.className, e),
-      preview: (() => {
-        const u = new URL(this.serviceurl);
-        u.searchParams.set('selector', getPreviousHeading(e).selector);
-        u.searchParams.set('inventory', this.original);
-        return u.href;
-      })(),
-      title: getPreviousHeading(e).heading,
-      selector: getPreviousHeading(e).selector,
-      description: getPreviousHeading(e).otherchildren
-        .filter((c) => c.tagName !== 'DIV' && !c.className)
-        .map((c) => c.textContent).join('\n'),
-    }));
+    return Array.from(this.dom.querySelectorAll('div[class]')).map((e) => {
+      const { heading, selector, otherchildren } = getPreviousHeading(e);
+      const block = new Block(this.dom, e);
+      return {
+        name: e.className,
+        variant: block.variant,
+        example: e.outerHTML,
+        table: block.table,
+        preview: (() => {
+          const u = new URL(this.serviceurl);
+          u.searchParams.set('selector', selector);
+          u.searchParams.set('inventory', this.original);
+          return u.href;
+        })(),
+        title: heading,
+        selector,
+        description: otherchildren
+          .filter((c) => c.tagName !== 'DIV' && !c.className)
+          .map((c) => c.textContent).join('\n'),
+      };
+    });
   }
 }
