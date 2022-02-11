@@ -12,9 +12,10 @@
 import wrap from '@adobe/helix-shared-wrap';
 import { logger } from '@adobe/helix-universal-logger';
 import { wrap as status } from '@adobe/helix-status';
-import { Response } from '@adobe/helix-fetch';
+import { Response, fetch } from '@adobe/helix-fetch';
 import getPreview from './preview.js';
 import BlockList from './blocklist.js';
+import TopList from './toplist.js';
 
 /**
  * This is the main function
@@ -23,27 +24,79 @@ import BlockList from './blocklist.js';
  * @returns {Response} a response
  */
 async function run(request, context) {
+  const serviceurl = new URL(`https://helix-pages.anywhere.run/${context.func.package}/${context.func.name}@${context.func.version}`);
   const url = new URL(request.url);
   const inventory = url.searchParams.get('inventory');
+  const inventories = url.searchParams.getAll('inventory');
   const selector = url.searchParams.get('selector');
-  // const filter = url.searchParams.get('filter');
+  const domain = url.searchParams.get('domain');
+
   if (inventory && selector) {
-    const { shot_url: location } = await getPreview(
+    if (inventory && !new URL(inventory).host.match(/\.hlx\.live$/)) {
+      // this is not a hlx.live URL, but it could be a valid production URL, checking
+      const guessurl = new URL('https://helix-pages.anywhere.run/helix-services/run-query@v2/guess-hostname');
+      guessurl.searchParams.set('domain', new URL(inventory).hostname);
+      const guessreq = await fetch(guessurl.href);
+      if (!guessreq.ok || (await guessreq.json()).results.length === 0) {
+        return new Response('Invalid URL, only *.hlx.live allowed', {
+          status: 400,
+          headers: {
+            'x-error': 'Unsupported host name',
+          },
+        });
+      }
+    }
+    context.log.info(`Getting screenshot ${context.env.SCREENLY_KEY?.length}`);
+    const { shot_url: location, error, message } = await getPreview(
       inventory,
       selector,
       { apikey: context.env.SCREENLY_KEY },
     );
-    return new Response('Your screenshot is ready', {
-      status: 302,
+    if (location) {
+      return new Response('Your screenshot is ready', {
+        status: 302,
+        headers: {
+          location,
+          'cache-control': 'max-age: 3500', // screenly stores images for 60 minutes.
+        },
+      });
+    }
+    context.log.error(`Error ${error} from Screenly: ${message.message}`);
+    return new Response(message.message, {
+      status: error,
       headers: {
-        location,
+        'x-error': message.message,
       },
     });
-  } else if (inventory) {
-    const { blocks } = await (await new BlockList(inventory).fetch()).parse();
-    return new Response(JSON.stringify(blocks), {
+  } else if (inventories.length || domain) {
+    const allblocks = Object.entries(([
+      (domain ? await (await new TopList(domain, serviceurl).fetch()).parse().blocks : []),
+      ...await Promise.all(inventories.map(async (i) => {
+        const { blocks } = await (await new BlockList(i, serviceurl).fetch()).parse();
+        return blocks;
+      }))])
+      .reduce((p, b) => [...p, ...b], []) // flatten
+      .reduce((p, v) => { // group by unique preview url
+        const { name, preview } = v;
+        // strip out variants (typically in brackets)
+        const cleanname = name.replace(/--.*$/, '');
+        if (typeof p[cleanname] === 'undefined') {
+          // eslint-disable-next-line no-param-reassign
+          p[cleanname] = {};
+        }
+        // eslint-disable-next-line no-param-reassign
+        p[cleanname][preview] = v;
+        return p;
+      }, {})).reduce((p, [key, value]) => {
+      // eslint-disable-next-line no-param-reassign
+      p[key] = Object.values(value);
+      return p;
+    }, {});
+
+    return new Response(JSON.stringify(allblocks), {
       headers: {
         'content-type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
       },
     });
   }

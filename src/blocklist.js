@@ -11,25 +11,28 @@
  */
 import { fetch } from '@adobe/helix-fetch';
 import { JSDOM } from 'jsdom';
+import Block from './block.js';
 
 function getPreviousHeading(el, className = el.className, otherchildren = []) {
-  if (el.previousElementSibling && el.previousElementSibling.tagName.match(/^H[1-6]$/)) {
+  const prevEl = el.previousElementSibling;
+  if (prevEl && prevEl.tagName.match(/^H[1-6]$/)) {
     return {
-      heading: el.previousElementSibling.textContent,
+      heading: prevEl.textContent,
       otherchildren,
-      selector: `#${el.previousElementSibling.id} ~ *[data-block-name="${className}"]`,
+      selector: `#${prevEl.id} ~ *[data-block-name="${className}"]`,
     };
-  } else if (el.previousElementSibling) {
-    return getPreviousHeading(el.previousElementSibling, className, [...otherchildren, el]);
+  } else if (prevEl) {
+    return getPreviousHeading(prevEl, className, [...otherchildren, el]);
   }
   return { otherchildren };
 }
 
 export default class BlockList {
-  constructor(base) {
+  constructor(base, serviceurl) {
     this.original = new URL(base);
     this.base = new URL(base);
     this.base.pathname = `${this.base.pathname}.plain.html`;
+    this.serviceurl = serviceurl;
   }
 
   async fetch() {
@@ -47,14 +50,26 @@ export default class BlockList {
   }
 
   get blocks() {
-    return Array.from(this.dom.querySelectorAll('div[class]')).map((e) => ({
-      name: e.className,
-      example: e.outerHTML,
-      title: getPreviousHeading(e).heading,
-      selector: getPreviousHeading(e).selector,
-      description: getPreviousHeading(e).otherchildren
-        .filter((c) => c.tagName !== 'DIV' && !c.className)
-        .map((c) => c.textContent).join('\n'),
-    }));
+    return Array.from(this.dom.querySelectorAll('div[class]')).map((e) => {
+      const { heading, selector, otherchildren } = getPreviousHeading(e);
+      const block = new Block(this.dom, e);
+      return {
+        name: e.className,
+        variant: block.variant,
+        example: e.outerHTML,
+        table: block.table,
+        preview: (() => {
+          const u = new URL(this.serviceurl);
+          u.searchParams.set('selector', selector);
+          u.searchParams.set('inventory', this.original);
+          return u.href;
+        })(),
+        title: heading,
+        selector,
+        description: otherchildren
+          .filter((c) => c.tagName !== 'DIV' && !c.className)
+          .map((c) => c.textContent).join('\n'),
+      };
+    });
   }
 }

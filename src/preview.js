@@ -21,6 +21,9 @@ export default async function getPreview(url, selector, { apikey }) {
       accept: 'application/json',
     },
     body: {
+      window_width: 414,
+      window_height: 736, // iphone 8 plus
+      device_scale_factor: 3,
       url,
       selector,
       delay: 5000,
